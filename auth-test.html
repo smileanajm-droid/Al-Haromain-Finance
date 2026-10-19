@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#123c2f">
+<title>Uji Koneksi Supabase — Al Haromain Finance</title>
+<style>
+:root{--green:#123c2f;--green2:#1c6249;--bg:#f4f7f5;--ink:#17231e;--muted:#68766f;--line:#dfe7e1;--red:#a33d3d}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+header{background:var(--green);color:#fff;padding:18px max(16px,calc((100% - 760px)/2))}header strong{font-size:18px}header small{display:block;color:#d0e1d7}
+main{max-width:760px;margin:24px auto;padding:0 14px 36px}.card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:16px}
+h1{font-size:25px;margin:0 0 8px}h2{font-size:17px;margin:0 0 10px}.muted{color:var(--muted);margin:0}
+.notice{background:#fff6df;border:1px solid #ead9a7;padding:12px;border-radius:10px;margin:16px 0;color:#5d4818}
+label{display:block;font-weight:700;font-size:13px;margin:12px 0 5px}input{width:100%;padding:12px;border:1px solid #ccd8d0;border-radius:9px;font:inherit}
+button{border:0;border-radius:9px;background:var(--green2);color:#fff;font-weight:750;font:inherit;padding:12px 15px;margin-top:14px;width:100%;cursor:pointer}
+button.secondary{background:white;color:var(--ink);border:1px solid var(--line)}
+.status{white-space:pre-wrap;overflow-wrap:anywhere;background:#f7faf8;border-radius:9px;padding:12px;margin-top:12px;font-size:13px}
+.good{color:#17683a}.bad{color:var(--red)}.hidden{display:none}
+table{width:100%;border-collapse:collapse;margin-top:10px;font-size:13px}td,th{text-align:left;padding:9px;border-bottom:1px solid var(--line)}
+code{overflow-wrap:anywhere}footer{font-size:12px;color:var(--muted);padding:8px}
+</style>
+</head>
+<body>
+<header><strong>Al Haromain Finance</strong><small>Uji koneksi Supabase • Tahap awal baca-saja</small></header>
+<main>
+<section class="card">
+<h1>Uji login pengurus</h1>
+<p class="muted">Halaman pemeriksaan teknis. Tidak mencatat pembayaran atau mengubah data keuangan.</p>
+<div class="notice"><strong>Keamanan:</strong> hanya gunakan Project URL dan publishable/anon key. Jangan pernah menaruh secret key atau service_role di frontend. Gunakan akun uji terlebih dahulu.</div>
+<label for="email">Email akun pengurus</label><input id="email" type="email" autocomplete="username" placeholder="email pengurus" required>
+<label for="password">Kata sandi</label><input id="password" type="password" autocomplete="current-password" placeholder="Kata sandi akun" required>
+<button id="loginBtn">Masuk dan uji koneksi</button>
+<button id="logoutBtn" class="secondary hidden">Keluar</button>
+<div id="status" class="status" role="status">Siap. Lengkapi konfigurasi di supabase-config.js lalu coba login.</div>
+</section>
+<section class="card hidden" id="results">
+<h2>Hasil pemeriksaan</h2>
+<p id="userLine"></p>
+<p id="profileLine"></p>
+<div id="unitsWrap"></div>
+<p class="muted">Halaman ini hanya membaca profil dan daftar unit sesuai kebijakan RLS. Tidak melakukan perubahan transaksi.</p>
+</section>
+<footer>Versi uji koneksi 0.1 • Jangan gunakan untuk menginput data asli.</footer>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="./supabase-config.js"></script>
+<script>
+(function(){
+ const $=id=>document.getElementById(id);
+ const status=(msg,ok=false)=>{$("status").textContent=msg;$("status").className="status "+(ok?"good":"bad")};
+ let client=null;
+ const cfg=window.SUPABASE_CONFIG||{};
+ if(!window.supabase||!window.supabase.createClient){
+   status("Library Supabase belum termuat. Pastikan perangkat terhubung ke internet, lalu muat ulang.");
+   return;
+ }
+ if(!cfg.url||cfg.url.includes("TEMPEL_")||!cfg.publishableKey||cfg.publishableKey.includes("TEMPEL_")){
+   status("Konfigurasi belum diisi. Edit supabase-config.js dan masukkan Project URL serta publishable/anon key.");
+ }else{
+   try{client=window.supabase.createClient(cfg.url,cfg.publishableKey)}catch(e){status("Konfigurasi tidak valid: "+e.message)}
+ }
+ $("loginBtn").addEventListener("click",async()=>{
+   if(!client){status("Konfigurasi Supabase belum valid. Periksa supabase-config.js.");return}
+   const email=$("email").value.trim(),password=$("password").value;
+   if(!email||!password){status("Isi email dan kata sandi terlebih dahulu.");return}
+   $("loginBtn").disabled=true;$("loginBtn").textContent="Memeriksa...";
+   try{
+     const {data:authData,error:authError}=await client.auth.signInWithPassword({email,password});
+     if(authError) throw authError;
+     const user=authData.user;
+     $("userLine").textContent="Login berhasil. User ID: "+user.id;
+     const {data:profile,error:profileError}=await client.from("profiles")
+       .select("full_name,role,unit_id,is_active").eq("user_id",user.id).maybeSingle();
+     if(profileError) throw new Error("Login berhasil, tetapi membaca profil gagal: "+profileError.message);
+     if(!profile){$("profileLine").textContent="Profil tidak ditemukan atau tidak diizinkan oleh RLS. Periksa tabel profiles."; $("unitsWrap").innerHTML="";$("results").classList.remove("hidden");status("Login berhasil, tetapi profil belum dapat dibaca.",false);$("logoutBtn").classList.remove("hidden");return}
+     $("profileLine").textContent="Profil: "+profile.full_name+" | Peran: "+profile.role+" | Aktif: "+profile.is_active;
+     const {data:units,error:unitsError}=await client.from("units").select("code,name,is_active").order("code");
+     if(unitsError) throw new Error("Profil terbaca, tetapi query unit gagal: "+unitsError.message);
+     $("unitsWrap").innerHTML="<strong>Unit yang terlihat oleh akun ini:</strong><table><thead><tr><th>Kode</th><th>Nama unit</th></tr></thead><tbody>"+(units||[]).map(u=>"<tr><td>"+esc(u.code)+"</td><td>"+esc(u.name)+"</td></tr>").join("")+"</tbody></table>";
+     $("results").classList.remove("hidden");$("logoutBtn").classList.remove("hidden");
+     status("Berhasil: autentikasi, baca profil, dan baca unit berhasil. Ini belum menguji semua peran atau mengizinkan pencatatan transaksi.",true);
+   }catch(e){status("Pemeriksaan gagal: "+(e.message||String(e))+"\nPeriksa email/kata sandi, Project URL/key, status konfirmasi email, dan kebijakan RLS.");}
+   finally{$("loginBtn").disabled=false;$("loginBtn").textContent="Masuk dan uji koneksi";}
+ });
+ $("logoutBtn").addEventListener("click",async()=>{if(client)await client.auth.signOut();$("results").classList.add("hidden");$("logoutBtn").classList.add("hidden");status("Anda sudah keluar.",true)});
+ function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+})();
+</script>
+</body></html>
