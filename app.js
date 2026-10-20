@@ -82,17 +82,27 @@
   }
 
   function toggleApp(show) {
-    if ($("authPanel")) {
-      $("authPanel").style.display = show ? "none" : "block";
-    }
+  const authPanel = $("authPanel");
 
-    document.querySelectorAll(
-      "main,header,nav,.app,.dashboard,.container"
-    ).forEach(el => {
-      if (!el.contains($("authPanel"))) {
-        el.style.display = show ? "" : "none";
-      }
-    });
+  if (authPanel) {
+    authPanel.style.display = show ? "none" : "block";
+  }
+
+  const main = document.querySelector("main");
+  const header = document.querySelector("header");
+
+  if (main) {
+    main.style.display = show ? "" : "none";
+  }
+
+  if (header) {
+    header.style.display = show ? "" : "none";
+  }
+
+  const signOut = $("signOutBtn");
+  if (signOut) {
+    signOut.style.display = show ? "" : "none";
+  }
   }
   
   async function loadProfile() {
