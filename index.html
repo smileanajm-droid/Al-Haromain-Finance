@@ -72,7 +72,11 @@
         <form id="transactionForm">
           <div class="form-grid">
             <div class="field"><label for="txDate">Tanggal</label><input id="txDate" type="date" required></div>
-            <div class="field"><label for="txType">Jenis transaksi</label><select id="txType"><option value="income">Pemasukan</option><option value="expense">Pengeluaran</option></select></div>
+            <div class="field"><label for="txType">Jenis transaksi</label>
+<select id="txType" required>
+  <option value="in">Pemasukan</option>
+  <option value="out">Pengeluaran</option>
+</select></div>
             <div class="field full"><label for="txUnit">Unit</label><select id="txUnit" required>
               <option>TK IT Al Haromain</option><option>SD Islam Plus Al Haromain</option><option>SMP Plus Al Maliki</option><option>Pesantren</option>
             </select></div>
