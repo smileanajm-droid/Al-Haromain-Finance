@@ -236,8 +236,25 @@
     }
 
     if ($("roleFilter")) {
-      $("roleFilter").value = profile.role;
-      $("roleFilter").disabled = true;
+  const roleNames = {
+    foundation_admin: "Pengurus Yayasan",
+    education_director: "Direktur Pendidikan",
+    foundation_treasurer: "Bendahara Yayasan",
+    auditor: "Auditor",
+    unit_head: "Kepala Unit",
+    unit_treasurer: "Bendahara Unit",
+    admin_staff: "Staf Administrasi"
+  };
+
+  $("roleFilter").innerHTML = "";
+
+  const option = document.createElement("option");
+  option.value = profile.role;
+  option.textContent = roleNames[profile.role] || profile.role;
+  $("roleFilter").appendChild(option);
+
+  $("roleFilter").value = profile.role;
+  $("roleFilter").disabled = true;
     }
 
     // Sesuai constraint database: direction = in atau out.
