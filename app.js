@@ -312,9 +312,13 @@
       '<tr><td colspan="4">Memuat data siswa...</td></tr>';
 
     const { data, error } = await sb
-      .from("students")
-      .select("student_code, full_name, class_name, enrollment_status")
-      .order("full_name", { ascending: true });
+  .from("students")
+  .select("student_code, full_name, class_name, enrollment_status")
+  .order("full_name", { ascending: true });
+
+if (!error) {
+  console.log("Jumlah data siswa terbaca:", (data || []).length);
+}
 
     if (error) {
       body.innerHTML = "";
