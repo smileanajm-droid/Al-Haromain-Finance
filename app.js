@@ -299,7 +299,74 @@
       $("resetBtn").style.display = "none";
     }
   }
+  // ===== DAFTAR DATA SISWA =====
+  let studentRecords = [];
 
+  async function loadStudents() {
+    const body = $("studentListBody");
+    const status = $("studentListMessage");
+
+    if (!body) return;
+
+    body.innerHTML =
+      '<tr><td colspan="4">Memuat data siswa...</td></tr>';
+
+    const { data, error } = await sb
+      .from("students")
+      .select("student_code, full_name, class_name, enrollment_status")
+      .order("full_name", { ascending: true });
+
+    if (error) {
+      body.innerHTML = "";
+      if (status) {
+        status.textContent = "Gagal memuat data siswa: " + error.message;
+        status.style.color = "#b42318";
+      }
+      return;
+    }
+
+    studentRecords = data || [];
+    renderStudentList();
+  }
+
+  function renderStudentList() {
+    const body = $("studentListBody");
+    const search = $("studentSearch");
+    const status = $("studentListMessage");
+
+    if (!body) return;
+
+    const keyword = (search?.value || "").trim().toLowerCase();
+
+    const filtered = studentRecords.filter(student =>
+      String(student.student_code || "").toLowerCase().includes(keyword) ||
+      String(student.full_name || "").toLowerCase().includes(keyword) ||
+      String(student.class_name || "").toLowerCase().includes(keyword)
+    );
+
+    if (!filtered.length) {
+      body.innerHTML =
+        '<tr><td colspan="4">Belum ada data siswa yang cocok.</td></tr>';
+    } else {
+      body.innerHTML = filtered.map(student => `
+        <tr>
+          <td>${escapeHTML(student.student_code)}</td>
+          <td>${escapeHTML(student.full_name)}</td>
+          <td>${escapeHTML(student.class_name || "-")}</td>
+          <td>${escapeHTML(student.enrollment_status || "-")}</td>
+        </tr>
+      `).join("");
+    }
+
+    if (status) {
+      status.textContent = `Menampilkan ${filtered.length} dari ${studentRecords.length} siswa.`;
+      status.style.color = "#137547";
+    }
+  }
+
+  if ($("studentSearch")) {
+    $("studentSearch").addEventListener("input", renderStudentList);
+  }
   async function refreshTransactions() {
     try {
       await loadTransactions();
