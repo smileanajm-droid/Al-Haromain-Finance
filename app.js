@@ -367,7 +367,49 @@ if (!error) {
       status.style.color = "#137547";
     }
   }
+function setupSPPFields() {
+  const category = $("txCategory");
+  const studentField = $("studentField");
+  const feePeriodField = $("feePeriodField");
+  const studentSelect = $("txStudent");
+  const feePeriod = $("txFeePeriod");
 
+  if (!category || !studentField || !feePeriodField || !studentSelect) {
+    return;
+  }
+
+  function updateSPPFields() {
+    const isSPP = category.value.trim().toLowerCase() === "spp";
+
+    studentField.hidden = !isSPP;
+    feePeriodField.hidden = !isSPP;
+
+    studentSelect.required = isSPP;
+
+    if (feePeriod) {
+      feePeriod.required = isSPP;
+    }
+  }
+
+  const unitStudents = studentRecords.filter(student =>
+    student.unit_id === profile.unit_id &&
+    student.enrollment_status === "active"
+  );
+
+  studentSelect.innerHTML = '<option value="">Pilih siswa</option>';
+
+  unitStudents.forEach(student => {
+    const option = document.createElement("option");
+    option.value = student.id;
+    option.textContent =
+      `${student.student_code} - ${student.full_name}` +
+      (student.class_name ? ` (${student.class_name})` : "");
+    studentSelect.appendChild(option);
+  });
+
+  category.addEventListener("change", updateSPPFields);
+  updateSPPFields();
+}
   if ($("studentSearch")) {
     $("studentSearch").addEventListener("input", renderStudentList);
   }
