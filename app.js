@@ -586,16 +586,18 @@ if (isSPP) {
     message("Menyimpan transaksi ke Supabase...");
 
     const payload = {
-      unit_id: profile.unit_id,
-      cash_account_id: account.id,
-      transaction_date: date,
-      direction,
-      category,
-      amount,
-      description: description || category,
-      status: "pending",
-      requested_by: session.user.id
-    };
+  unit_id: profile.unit_id,
+  cash_account_id: account.id,
+  transaction_date: date,
+  direction,
+  category,
+  amount,
+  description: description || category,
+  student_id: isSPP ? studentId : null,
+  fee_period: isSPP ? feePeriod : null,
+  status: "pending",
+  requested_by: session.user.id
+};
 
     const { error } = await sb.from("transactions").insert(payload);
 
