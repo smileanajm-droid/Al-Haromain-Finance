@@ -540,9 +540,14 @@ if (!error) {
     const date = $("txDate")?.value;
     const direction = $("txType")?.value;
     const category = $("txCategory")?.value?.trim();
-    const amount = Number($("txAmount")?.value);
-    const description = $("txNote")?.value?.trim();
-    const account = accounts.find(a => a.unit_id === profile.unit_id);
+const amount = Number($("txAmount")?.value);
+const description = $("txNote")?.value?.trim();
+const account = accounts.find(a => a.unit_id === profile.unit_id);
+
+const isSPP = category?.toLowerCase() === "spp";
+const studentId = isSPP ? $("txStudent")?.value : null;
+const feeMonth = isSPP ? $("txFeePeriod")?.value : "";
+const feePeriod = feeMonth ? `${feeMonth}-01` : null;
 
     if (
       !date ||
@@ -555,7 +560,24 @@ if (!error) {
       message("Lengkapi tanggal, jenis, kategori, nominal, dan pastikan akun kas unit tersedia.", true);
       return;
     }
+if (isSPP) {
+  if (!studentId || !feeMonth) {
+    message("Pilih siswa dan periode pembayaran SPP.", true);
+    return;
+  }
 
+  const selectedStudent = studentRecords.find(
+    student =>
+      student.id === studentId &&
+      student.unit_id === profile.unit_id &&
+      student.enrollment_status === "active"
+  );
+
+  if (!selectedStudent) {
+    message("Siswa tidak valid atau bukan dari unit Anda.", true);
+    return;
+  }
+}
     const button = $("transactionForm")?.querySelector(
       'button[type="submit"], button:not([type])'
     );
