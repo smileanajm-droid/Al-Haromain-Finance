@@ -1,94 +1,563 @@
-const UNITS = ["TK IT Al Haromain","SD Islam Plus Al Haromain","SMP Plus Al Maliki","Pesantren"];
-const STORAGE_KEY = "alharomain-finance-demo-v1";
-const now = new Date();
-const localDate = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
-const monthKey = d => localDate(d).slice(0,7);
-const rupiah = n => new Intl.NumberFormat("id-ID",{style:"currency",currency:"IDR",maximumFractionDigits:0}).format(n||0);
-const escapeHtml = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-function demoData(){
- const m = monthKey(now);
- const dates = [localDate(new Date(now.getFullYear(),now.getMonth(),2)),localDate(new Date(now.getFullYear(),now.getMonth(),5)),localDate(new Date(now.getFullYear(),now.getMonth(),8)),localDate(new Date(now.getFullYear(),now.getMonth(),11)),localDate(new Date(now.getFullYear(),now.getMonth(),14)),localDate(new Date(now.getFullYear(),now.getMonth(),17))];
- return {
-  transactions:[
-   {id:1,date:dates[0],unit:UNITS[1],type:"income",category:"SPP",amount:7200000,note:"Penerimaan SPP contoh",status:"approved"},
-   {id:2,date:dates[1],unit:UNITS[1],type:"expense",category:"Gaji dan honor",amount:2800000,note:"Honor guru — contoh",status:"approved"},
-   {id:3,date:dates[2],unit:UNITS[2],type:"income",category:"SPP",amount:4800000,note:"Penerimaan SPP contoh",status:"approved"},
-   {id:4,date:dates[3],unit:UNITS[3],type:"expense",category:"Operasional",amount:950000,note:"Kebutuhan asrama — contoh",status:"approved"},
-   {id:5,date:dates[4],unit:UNITS[0],type:"income",category:"SPP",amount:2250000,note:"Penerimaan SPP contoh",status:"approved"},
-   {id:6,date:dates[5],unit:UNITS[2],type:"expense",category:"Perawatan",amount:450000,note:"Perawatan fasilitas — contoh",status:"approved"}
-  ],
-  invoices:[
-   {code:"DEMO-001",unit:UNITS[1],period:m,amount:150000,paid:150000},
-   {code:"DEMO-002",unit:UNITS[1],period:m,amount:150000,paid:50000},
-   {code:"DEMO-003",unit:UNITS[2],period:m,amount:200000,paid:0},
-   {code:"DEMO-004",unit:UNITS[0],period:m,amount:125000,paid:125000},
-   {code:"DEMO-005",unit:UNITS[3],period:m,amount:300000,paid:100000}
-  ]
- };
-}
-function loadData(){try{const raw=localStorage.getItem(STORAGE_KEY);return raw?JSON.parse(raw):demoData()}catch(e){return demoData()}}
-let db=loadData();
-const $ = id => document.getElementById(id);
-$("monthFilter").value=monthKey(now); $("txDate").value=localDate(now);
-function save(){localStorage.setItem(STORAGE_KEY,JSON.stringify(db))}
-function visibleUnit(){return $("unitFilter").value}
-function filteredTransactions(){
- const month=$("monthFilter").value, unit=visibleUnit();
- return db.transactions.filter(t=>(!month||t.date.startsWith(month))&&(unit==="all"||t.unit===unit)).sort((a,b)=>b.date.localeCompare(a.date)||b.id-a.id)
-}
-function filteredInvoices(){
- const month=$("monthFilter").value, unit=visibleUnit();
- return db.invoices.filter(i=>(!month||i.period===month)&&(unit==="all"||i.unit===unit))
-}
-function sum(items, fn){return items.reduce((a,x)=>a+fn(x),0)}
-function render(){
- const role=$("roleFilter").value;
- const unitSelect=$("unitFilter");
- if(role==="treasurer"){
-  if(unitSelect.value==="all") unitSelect.value=UNITS[1];
-  unitSelect.querySelector('option[value="all"]').disabled=true;
- }else unitSelect.querySelector('option[value="all"]').disabled=false;
- const tx=filteredTransactions(), inv=filteredInvoices();
- const income=sum(tx.filter(t=>t.type==="income"),t=>t.amount);
- const expense=sum(tx.filter(t=>t.type==="expense"),t=>t.amount);
- const spp=sum(tx.filter(t=>t.type==="income"&&t.category==="SPP"),t=>t.amount);
- const arrears=sum(inv,i=>Math.max(0,i.amount-i.paid));
- $("incomeTotal").textContent=rupiah(income);$("expenseTotal").textContent=rupiah(expense);
- $("sppTotal").textContent=rupiah(spp);$("arrearsTotal").textContent=rupiah(arrears);
- const units=visibleUnit()==="all"?UNITS:[visibleUnit()];
- $("unitSummary").innerHTML=units.map(u=>{
-  const a=sum(tx.filter(t=>t.unit===u&&t.type==="income"),t=>t.amount);
-  const b=sum(tx.filter(t=>t.unit===u&&t.type==="expense"),t=>t.amount);
-  return `<tr><td><strong>${escapeHtml(u)}</strong></td><td class="amount-income">${rupiah(a)}</td><td class="amount-expense">${rupiah(b)}</td><td>${rupiah(a-b)}</td></tr>`
- }).join("")||'<tr><td colspan="4">Tidak ada data.</td></tr>';
- $("transactionsTable").innerHTML=tx.map(t=>`<tr><td>${escapeHtml(t.date)}</td><td>${escapeHtml(t.unit)}</td><td><span class="pill ${t.type==="income"?"pill-paid":"pill-unpaid"}">${t.type==="income"?"Pemasukan":"Pengeluaran"}</span></td><td>${escapeHtml(t.category)}</td><td>${escapeHtml(t.note)}</td><td class="right ${t.type==="income"?"amount-income":"amount-expense"}">${rupiah(t.amount)}</td></tr>`).join("");
- $("emptyState").classList.toggle("hidden",tx.length>0);
- $("sppTable").innerHTML=inv.map(i=>{
-  const remaining=Math.max(0,i.amount-i.paid), status=remaining===0?"Lunas":i.paid>0?"Sebagian":"Belum bayar";
-  const cls=remaining===0?"pill-paid":i.paid>0?"pill-partial":"pill-unpaid";
-  return `<tr><td>${escapeHtml(i.code)}</td><td>${escapeHtml(i.unit)}</td><td>${escapeHtml(i.period)}</td><td>${rupiah(i.amount)}</td><td>${rupiah(i.paid)}</td><td><span class="pill ${cls}">${status}</span></td></tr>`
- }).join("")||'<tr><td colspan="6">Tidak ada tagihan.</td></tr>';
-}
-$("transactionForm").addEventListener("submit",e=>{
- e.preventDefault();
- if($("roleFilter").value!=="treasurer" && $("roleFilter").value!=="foundation"){return}
- const amount=Number($("txAmount").value);
- if(!Number.isFinite(amount)||amount<=0){$("formMessage").textContent="Nominal harus lebih dari nol.";return}
- const tx={id:Date.now(),date:$("txDate").value,unit:$("txUnit").value,type:$("txType").value,category:$("txCategory").value,amount,note:$("txNote").value.trim(),status:"demo"};
- if(!tx.date||!tx.note){$("formMessage").textContent="Lengkapi tanggal dan keterangan.";return}
- if($("roleFilter").value==="treasurer"&&tx.unit!==visibleUnit()){tx.unit=visibleUnit()}
- db.transactions.push(tx);save();render();$("transactionForm").reset();$("txDate").value=localDate(now);$("formMessage").textContent="Transaksi demo tersimpan di browser ini."; 
-});
-["monthFilter","unitFilter","roleFilter"].forEach(id=>$(id).addEventListener("change",()=>{if(id==="roleFilter"&&$("roleFilter").value==="treasurer")$("txUnit").value=visibleUnit()==="all"?UNITS[1]:visibleUnit();render()}));
-$("resetBtn").addEventListener("click",()=>{if(confirm("Kembalikan seluruh data demo ke kondisi awal?")){db=demoData();save();render();$("formMessage").textContent="Data demo telah direset."}});
-$("exportBtn").addEventListener("click",()=>{
- const rows=[["Tanggal","Unit","Jenis","Kategori","Keterangan","Nominal"],...filteredTransactions().map(t=>[t.date,t.unit,t.type,t.category,t.note,t.amount])];
- const csv=rows.map(row=>row.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",")).join("\r\n");
- const blob=new Blob(["\ufeff"+csv],{type:"text/csv;charset=utf-8;"}),url=URL.createObjectURL(blob),a=document.createElement("a");
- a.href=url;a.download="al-haromain-finance-demo.csv";a.click();URL.revokeObjectURL(url);
-});
-let deferredPrompt=null;
-window.addEventListener("beforeinstallprompt",e=>{e.preventDefault();deferredPrompt=e;$("installBtn").classList.remove("hidden")});
-$("installBtn").addEventListener("click",async()=>{if(!deferredPrompt){alert("Jika tombol instalasi belum tersedia, buka menu Chrome lalu pilih Tambahkan ke layar utama.");return}deferredPrompt.prompt();await deferredPrompt.userChoice;deferredPrompt=null;$("installBtn").classList.add("hidden")});
-if("serviceWorker" in navigator && location.protocol.startsWith("http"))window.addEventListener("load",()=>navigator.serviceWorker.register("./service-worker.js").catch(err=>console.warn("Service worker belum terdaftar",err)));
-render();
+/* Al-Haromain Finance — Supabase */
+(() => {
+  "use strict";
+
+  const $ = id => document.getElementById(id);
+  const rupiah = n => new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: "IDR",
+    maximumFractionDigits: 0
+  }).format(Number(n || 0));
+
+  let sb, session, profile;
+  let units = [], accounts = [], transactions = [];
+  let selectedMonth = "", selectedUnit = "all";
+
+  function message(text, error = false) {
+    const el = $("formMessage");
+    if (el) {
+      el.textContent = text;
+      el.style.color = error ? "#b42318" : "#137547";
+    } else {
+      alert(text);
+    }
+  }
+
+  function escapeHTML(value) {
+    return String(value ?? "").replace(/[&<>"']/g, c => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;",
+      '"': "&quot;", "'": "&#39;"
+    }[c]));
+  }
+
+  function createLogin() {
+    if ($("authPanel")) return;
+
+    const panel = document.createElement("section");
+    panel.id = "authPanel";
+    panel.style.cssText =
+      "max-width:460px;margin:24px auto;padding:20px;border:1px solid #ddd;border-radius:14px;background:white";
+
+    panel.innerHTML = `
+      <h2>Masuk — Al-Haromain Finance</h2>
+      <p>Gunakan akun yang sudah terdaftar di Supabase.</p>
+      <form id="loginForm">
+        <label>Email</label>
+        <input id="loginEmail" type="email" required
+          autocomplete="username"
+          style="box-sizing:border-box;width:100%;padding:12px;margin:8px 0">
+        <label>Kata sandi</label>
+        <input id="loginPassword" type="password" required
+          autocomplete="current-password"
+          style="box-sizing:border-box;width:100%;padding:12px;margin:8px 0">
+        <button id="loginBtn" type="submit"
+          style="width:100%;padding:12px;background:#176b45;color:white;border:0;border-radius:8px">
+          Masuk
+        </button>
+        <p id="loginMessage" style="color:#b42318"></p>
+      </form>`;
+
+    document.body.prepend(panel);
+
+    $("loginForm").addEventListener("submit", async event => {
+      event.preventDefault();
+      $("loginBtn").disabled = true;
+      $("loginMessage").textContent = "Sedang masuk…";
+
+      const { data, error } = await sb.auth.signInWithPassword({
+        email: $("loginEmail").value.trim(),
+        password: $("loginPassword").value
+      });
+
+      $("loginBtn").disabled = false;
+
+      if (error) {
+        $("loginMessage").textContent = "Gagal masuk: " + error.message;
+        return;
+      }
+
+      session = data.session;
+      await loadApp();
+    });
+  }
+
+  function toggleApp(show) {
+    if ($("authPanel")) {
+      $("authPanel").style.display = show ? "none" : "block";
+    }
+
+    document.querySelectorAll(
+      "main,header,nav,.app,.dashboard,.container"
+    ).forEach(el => {
+      if (!el.contains($("authPanel"))) {
+        el.style.display = show ? "" : "none";
+      }
+    });
+  }
+
+  async function loadProfile() {
+    const { data, error } = await sb
+      .from("profiles")
+      .select("id,full_name,role,unit_id,is_active")
+      .eq("id", session.user.id)
+      .single();
+
+    if (error) throw Error("Profil gagal dibaca: " + error.message);
+    if (!data || !data.is_active) {
+      throw Error("Profil pengguna belum aktif.");
+    }
+    if (!["foundation_admin", "unit_treasurer"].includes(data.role)) {
+      throw Error("Peran akun tidak diizinkan.");
+    }
+
+    profile = data;
+  }
+
+  async function loadUnits() {
+    const { data, error } = await sb
+      .from("units")
+      .select("id,name,code,is_active")
+      .eq("is_active", true)
+      .order("name");
+
+    if (error) throw Error("Unit gagal dibaca: " + error.message);
+
+    units = data || [];
+
+    if (profile.role === "unit_treasurer") {
+      units = units.filter(unit => unit.id === profile.unit_id);
+      if (!units.length) throw Error("Unit bendahara tidak ditemukan.");
+    }
+  }
+
+  async function loadAccounts() {
+    let query = sb
+      .from("cash_accounts")
+      .select("id,unit_id,account_name,account_type,is_active")
+      .eq("is_active", true);
+
+    if (profile.role === "unit_treasurer") {
+      query = query.eq("unit_id", profile.unit_id);
+    }
+
+    const { data, error } = await query;
+
+    if (error) throw Error("Akun kas gagal dibaca: " + error.message);
+    accounts = data || [];
+  }
+
+  async function loadTransactions() {
+    let query = sb
+      .from("transactions")
+      .select("id,unit_id,cash_account_id,transaction_date,direction,category,amount,description,status,requested_by,approved_by,approved_at,created_at")
+      .order("transaction_date", { ascending: false })
+      .limit(1000);
+
+    if (profile.role === "unit_treasurer") {
+      query = query.eq("unit_id", profile.unit_id);
+    } else if (selectedUnit !== "all") {
+      query = query.eq("unit_id", selectedUnit);
+    }
+
+    if (selectedMonth) {
+      const [year, month] = selectedMonth.split("-");
+      const start = `${year}-${month}-01`;
+      const next = new Date(Number(year), Number(month), 1);
+      const end =
+        `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, "0")}-01`;
+
+      query = query.gte("transaction_date", start)
+        .lt("transaction_date", end);
+    }
+
+    const { data, error } = await query;
+    if (error) throw Error("Transaksi gagal dibaca: " + error.message);
+
+    transactions = data || [];
+    render();
+  }
+   function fillSelect(element, rows, key, label, placeholder = null) {
+    if (!element) return;
+    element.innerHTML = "";
+
+    if (placeholder !== null) {
+      const option = document.createElement("option");
+      option.value = "";
+      option.textContent = placeholder;
+      element.appendChild(option);
+    }
+
+    rows.forEach(row => {
+      const option = document.createElement("option");
+      option.value = row[key];
+      option.textContent = label(row);
+      element.appendChild(option);
+    });
+  }
+
+  function setupControls() {
+    fillSelect($("txUnit"), units, "id", unit => unit.name, "Pilih unit");
+
+    if ($("txUnit") && profile.role === "unit_treasurer") {
+      $("txUnit").value = profile.unit_id;
+      $("txUnit").disabled = true;
+    }
+
+    if ($("unitFilter")) {
+      if (profile.role === "foundation_admin") {
+        fillSelect(
+          $("unitFilter"),
+          [{ id: "all", name: "Semua unit" }, ...units],
+          "id",
+          unit => unit.name
+        );
+        $("unitFilter").value = selectedUnit;
+      } else {
+        fillSelect($("unitFilter"), units, "id", unit => unit.name);
+        $("unitFilter").value = profile.unit_id;
+        $("unitFilter").disabled = true;
+      }
+    }
+
+    if ($("roleFilter")) {
+      $("roleFilter").value = profile.role;
+      $("roleFilter").disabled = true;
+    }
+
+    // Sesuai constraint database: direction = in atau out.
+    if ($("txType")) {
+      $("txType").innerHTML =
+        '<option value="in">Pemasukan</option>' +
+        '<option value="out">Pengeluaran</option>';
+    }
+
+    if ($("transactionForm")) {
+      const canWrite = profile.role === "unit_treasurer";
+      $("transactionForm").style.display = canWrite ? "" : "none";
+
+      $("transactionForm")
+        .querySelectorAll("input,select,textarea,button")
+        .forEach(el => el.disabled = !canWrite);
+
+      $("transactionForm").addEventListener("submit", submitTransaction);
+    }
+
+    if ($("monthFilter")) {
+      $("monthFilter").addEventListener("change", async () => {
+        selectedMonth = $("monthFilter").value;
+        await refreshTransactions();
+      });
+    }
+
+    if ($("unitFilter")) {
+      $("unitFilter").addEventListener("change", async () => {
+        if (profile.role === "foundation_admin") {
+          selectedUnit = $("unitFilter").value || "all";
+        }
+        await refreshTransactions();
+      });
+    }
+
+    if ($("exportBtn")) {
+      $("exportBtn").addEventListener("click", exportCSV);
+    }
+
+    if ($("resetBtn")) {
+      $("resetBtn").style.display = "none";
+    }
+  }
+
+  async function refreshTransactions() {
+    try {
+      await loadTransactions();
+    } catch (error) {
+      message(error.message, true);
+    }
+  }
+
+  function render() {
+    const approved = transactions.filter(t => t.status === "approved");
+
+    const income = approved
+      .filter(t => t.direction === "in")
+      .reduce((sum, t) => sum + Number(t.amount), 0);
+
+    const expense = approved
+      .filter(t => t.direction === "out")
+      .reduce((sum, t) => sum + Number(t.amount), 0);
+
+    if ($("incomeTotal")) $("incomeTotal").textContent = rupiah(income);
+    if ($("expenseTotal")) $("expenseTotal").textContent = rupiah(expense);
+
+    if ($("sppTotal")) {
+      const spp = approved
+        .filter(t => t.direction === "in" &&
+          /spp|syahriah|iuran/i.test(t.category))
+        .reduce((sum, t) => sum + Number(t.amount), 0);
+
+      $("sppTotal").textContent = rupiah(spp);
+    }
+
+    if ($("arrearsTotal")) {
+      const pending = transactions.filter(t => t.status === "pending").length;
+      $("arrearsTotal").textContent =
+        `${pending} transaksi menunggu persetujuan`;
+    }
+
+    if ($("unitSummary")) {
+      $("unitSummary").innerHTML =
+        `<table>
+          <thead><tr>
+            <th>Unit</th><th>Pemasukan</th>
+            <th>Pengeluaran</th><th>Selisih</th>
+          </tr></thead>
+          <tbody>${units.map(unit => {
+            const list = approved.filter(t => t.unit_id === unit.id);
+            const masuk = list.filter(t => t.direction === "in")
+              .reduce((sum, t) => sum + Number(t.amount), 0);
+            const keluar = list.filter(t => t.direction === "out")
+              .reduce((sum, t) => sum + Number(t.amount), 0);
+
+            return `<tr>
+              <td>${escapeHTML(unit.name)}</td>
+              <td>${rupiah(masuk)}</td>
+              <td>${rupiah(keluar)}</td>
+              <td>${rupiah(masuk - keluar)}</td>
+            </tr>`;
+          }).join("")}</tbody>
+        </table>`;
+    }
+
+    if ($("transactionsTable")) {
+      $("transactionsTable").innerHTML =
+        `<thead><tr>
+          <th>Tanggal</th><th>Unit</th><th>Jenis</th>
+          <th>Kategori</th><th>Keterangan</th>
+          <th>Nominal</th><th>Status</th>
+        </tr></thead>
+        <tbody>${transactions.map(t => {
+          const unit = units.find(u => u.id === t.unit_id);
+          const jenis = t.direction === "in"
+            ? "Pemasukan" : "Pengeluaran";
+
+          return `<tr>
+            <td>${escapeHTML(t.transaction_date)}</td>
+            <td>${escapeHTML(unit?.name || "Unit")}</td>
+            <td>${jenis}</td>
+            <td>${escapeHTML(t.category)}</td>
+            <td>${escapeHTML(t.description)}</td>
+            <td>${rupiah(t.amount)}</td>
+            <td>${escapeHTML(t.status)}</td>
+          </tr>`;
+        }).join("")}</tbody>`;
+    }
+
+    if ($("emptyState")) {
+      $("emptyState").style.display = transactions.length ? "none" : "block";
+    }
+  }
+ 
+  async function submitTransaction(event) {
+    event.preventDefault();
+
+    if (!profile || profile.role !== "unit_treasurer") {
+      message("Akun yayasan hanya untuk melihat data. Input dilakukan oleh bendahara unit.", true);
+      return;
+    }
+
+    const date = $("txDate")?.value;
+    const direction = $("txType")?.value;
+    const category = $("txCategory")?.value?.trim();
+    const amount = Number($("txAmount")?.value);
+    const description = $("txNote")?.value?.trim();
+    const account = accounts.find(a => a.unit_id === profile.unit_id);
+
+    if (
+      !date ||
+      !["in", "out"].includes(direction) ||
+      !category ||
+      !Number.isFinite(amount) ||
+      amount <= 0 ||
+      !account
+    ) {
+      message("Lengkapi tanggal, jenis, kategori, nominal, dan pastikan akun kas unit tersedia.", true);
+      return;
+    }
+
+    const button = $("transactionForm")?.querySelector(
+      'button[type="submit"], button:not([type])'
+    );
+
+    if (button) button.disabled = true;
+    message("Menyimpan transaksi ke Supabase...");
+
+    const payload = {
+      unit_id: profile.unit_id,
+      cash_account_id: account.id,
+      transaction_date: date,
+      direction,
+      category,
+      amount,
+      description: description || category,
+      status: "pending",
+      requested_by: session.user.id
+    };
+
+    const { error } = await sb.from("transactions").insert(payload);
+
+    if (button) button.disabled = false;
+
+    if (error) {
+      message("Transaksi belum tersimpan: " + error.message, true);
+      return;
+    }
+
+    message("Transaksi berhasil disimpan dan menunggu persetujuan.");
+    $("transactionForm").reset();
+
+    if ($("txDate")) {
+      $("txDate").value = new Date().toISOString().slice(0, 10);
+    }
+
+    await refreshTransactions();
+  }
+
+  function exportCSV() {
+    const rows = [
+      ["Tanggal", "Unit", "Jenis", "Kategori", "Nominal", "Keterangan", "Status"]
+    ];
+
+    for (const t of transactions) {
+      rows.push([
+        t.transaction_date,
+        units.find(u => u.id === t.unit_id)?.name || t.unit_id || "",
+        t.direction === "in" ? "Pemasukan" : "Pengeluaran",
+        t.category,
+        t.amount,
+        t.description,
+        t.status
+      ]);
+    }
+
+    const csv = rows.map(row =>
+      row.map(value =>
+        '"' + String(value ?? "").replace(/"/g, '""') + '"'
+      ).join(",")
+    ).join("\r\n");
+
+    const blob = new Blob(["\uFEFF" + csv], {
+      type: "text/csv;charset=utf-8;"
+    });
+
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "laporan-keuangan-al-haromain.csv";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  async function loadApp() {
+    try {
+      await loadProfile();
+      await loadUnits();
+      await loadAccounts();
+
+      setupControls();
+      toggleApp(true);
+
+      if ($("txDate") && !$("txDate").value) {
+        $("txDate").value = new Date().toISOString().slice(0, 10);
+      }
+
+      if ($("transactionForm")) {
+        $("transactionForm").removeEventListener("submit", submitTransaction);
+        $("transactionForm").addEventListener("submit", submitTransaction);
+      }
+
+      if ($("exportBtn")) {
+        $("exportBtn").addEventListener("click", exportCSV);
+      }
+
+      if (!$("signOutBtn")) {
+        const signOut = document.createElement("button");
+        signOut.id = "signOutBtn";
+        signOut.type = "button";
+        signOut.textContent = "Keluar";
+        signOut.addEventListener("click", async () => {
+          await sb.auth.signOut();
+          toggleApp(false);
+        });
+
+        const header = document.querySelector("header");
+        if (header) {
+          header.appendChild(signOut);
+        } else {
+          document.body.prepend(signOut);
+        }
+      }
+
+      await loadTransactions();
+
+    } catch (error) {
+      toggleApp(false);
+      const loginMessage = $("loginMessage");
+      if (loginMessage) {
+        loginMessage.textContent = "Gagal memuat aplikasi: " + error.message;
+      }
+    }
+  }
+
+  async function init() {
+    createLogin();
+
+    const config = window.SUPABASE_CONFIG;
+
+    if (
+      !window.supabase ||
+      !config ||
+      !config.url ||
+      !config.publishableKey
+    ) {
+      const loginMessage = $("loginMessage");
+      if (loginMessage) {
+        loginMessage.textContent =
+          "Konfigurasi Supabase tidak terbaca. Periksa supabase-config.js.";
+      }
+      return;
+    }
+
+    sb = window.supabase.createClient(
+      config.url,
+      config.publishableKey
+    );
+
+    const { data, error } = await sb.auth.getSession();
+
+    if (error) {
+      const loginMessage = $("loginMessage");
+      if (loginMessage) loginMessage.textContent = error.message;
+      return;
+    }
+
+    session = data.session;
+
+    if (session) {
+      await loadApp();
+    } else {
+      toggleApp(false);
+    }
+
+    sb.auth.onAuthStateChange((_event, newSession) => {
+      session = newSession;
+
+      if (!newSession) {
+        toggleApp(false);
+      }
+    });
+  }
+
+  document.addEventListener("DOMContentLoaded", init);
+})();
