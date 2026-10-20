@@ -94,25 +94,31 @@
       }
     });
   }
-
+  
   async function loadProfile() {
     const { data, error } = await sb
       .from("profiles")
-      .select("id,full_name,role,unit_id,is_active")
-      .eq("id", session.user.id)
-      .single();
+      .select("user_id, full_name, role, unit_id, is_active")
+      .eq("user_id", session.user.id)
+      .maybeSingle();
 
-    if (error) throw Error("Profil gagal dibaca: " + error.message);
-    if (!data || !data.is_active) {
-      throw Error("Profil pengguna belum aktif.");
+    if (error) {
+      throw new Error("Profil gagal dibaca: " + error.message);
     }
-    if (!["foundation_admin", "unit_treasurer"].includes(data.role)) {
-      throw Error("Peran akun tidak diizinkan.");
+
+    if (!data) {
+      throw new Error(
+        "Profil akun belum ditemukan. Pastikan user_id pada tabel profiles sesuai dengan akun login."
+      );
+    }
+
+    if (!data.is_active) {
+      throw new Error("Akun Anda tidak aktif. Hubungi administrator yayasan.");
     }
 
     profile = data;
   }
-
+  
   async function loadUnits() {
     const { data, error } = await sb
       .from("units")
