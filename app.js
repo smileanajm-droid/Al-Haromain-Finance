@@ -465,56 +465,77 @@
     URL.revokeObjectURL(url);
   }
 
-  async function loadApp() {
-    try {
-      await loadProfile();
-      await loadUnits();
-      await loadAccounts();
 
-      setupControls();
-      toggleApp(true);
+async function loadApp() {
+  try {
+    await loadProfile();
+    await loadUnits();
+    await loadAccounts();
 
-      if ($("txDate") && !$("txDate").value) {
-        $("txDate").value = new Date().toISOString().slice(0, 10);
-      }
+    setupControls();
+    toggleApp(true);
 
-      if ($("transactionForm")) {
-        $("transactionForm").removeEventListener("submit", submitTransaction);
-        $("transactionForm").addEventListener("submit", submitTransaction);
-      }
+    // Sembunyikan pemberitahuan demo lama.
+    document.querySelectorAll(".notice").forEach(el => {
+      el.style.display = "none";
+    });
 
-      if ($("exportBtn")) {
-        $("exportBtn").addEventListener("click", exportCSV);
-      }
+    // Sesuaikan teks formulir dengan aplikasi terhubung.
+    const submitButton = $("transactionForm")?.querySelector(
+      'button[type="submit"]'
+    );
+    if (submitButton) {
+      submitButton.textContent = "Simpan transaksi";
+    }
 
-      if (!$("signOutBtn")) {
-        const signOut = document.createElement("button");
-        signOut.id = "signOutBtn";
-        signOut.type = "button";
-        signOut.textContent = "Keluar";
-        signOut.addEventListener("click", async () => {
-          await sb.auth.signOut();
-          toggleApp(false);
-        });
+    // Form hanya untuk bendahara unit.
+    if ($("transactionForm")) {
+      $("transactionForm").removeEventListener(
+        "submit",
+        submitTransaction
+      );
+      $("transactionForm").addEventListener(
+        "submit",
+        submitTransaction
+      );
+    }
 
-        const header = document.querySelector("header");
-        if (header) {
-          header.appendChild(signOut);
-        } else {
-          document.body.prepend(signOut);
-        }
-      }
+    if ($("txDate")) {
+      $("txDate").value = new Date().toISOString().slice(0, 10);
+    }
 
-      await loadTransactions();
+    if ($("exportBtn")) {
+      $("exportBtn").onclick = exportCSV;
+    }
 
-    } catch (error) {
-      toggleApp(false);
-      const loginMessage = $("loginMessage");
-      if (loginMessage) {
-        loginMessage.textContent = "Gagal memuat aplikasi: " + error.message;
-      }
+    if (!$("signOutBtn")) {
+      const signOut = document.createElement("button");
+      signOut.id = "signOutBtn";
+      signOut.type = "button";
+      signOut.textContent = "Keluar";
+
+      signOut.onclick = async () => {
+        await sb.auth.signOut();
+        toggleApp(false);
+      };
+
+      const header = document.querySelector("header");
+      if (header) header.appendChild(signOut);
+      else document.body.prepend(signOut);
+    }
+
+    await loadTransactions();
+
+  } catch (error) {
+    toggleApp(false);
+
+    const loginMessage = $("loginMessage");
+    if (loginMessage) {
+      loginMessage.textContent =
+        "Gagal memuat aplikasi: " + error.message;
     }
   }
+}
 
   async function init() {
     createLogin();
