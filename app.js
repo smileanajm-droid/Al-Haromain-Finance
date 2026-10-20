@@ -636,6 +636,7 @@ async function loadApp() {
 
     setupControls();
     setupStudentImport();
+    await loadStudents();
     toggleApp(true);
 
     // Sembunyikan pemberitahuan demo lama.
