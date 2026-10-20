@@ -148,6 +148,43 @@
 
   <p id="studentImportMessage" class="form-message" role="status"></p>
 </section>
+    <section class="panel" id="studentListPanel">
+  <div class="panel-heading">
+    <div>
+      <h2>Data Siswa</h2>
+      <p class="muted">Daftar siswa yang tersimpan di database.</p>
+    </div>
+  </div>
+
+  <div class="field full">
+    <label for="studentSearch">Cari siswa</label>
+    <input
+      id="studentSearch"
+      type="search"
+      placeholder="Cari kode atau nama siswa..."
+    >
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Kode Siswa</th>
+          <th>Nama Siswa</th>
+          <th>Kelas</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody id="studentListBody">
+        <tr>
+          <td colspan="4">Memuat data siswa...</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p id="studentListMessage" class="form-message" role="status"></p>
+    </section>
     <footer>
       <p><strong>Al Haromain Finance</strong> • Versi prototipe 0.1</p>
       <p>Belum untuk transaksi nyata. Versi produksi memerlukan login sungguhan, database terpusat, kontrol akses per unit, pencadangan, dan jejak audit.</p>
