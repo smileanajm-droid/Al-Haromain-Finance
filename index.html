@@ -114,7 +114,40 @@
         <table><thead><tr><th>Kode siswa</th><th>Unit</th><th>Periode</th><th>Tagihan</th><th>Dibayar</th><th>Status</th></tr></thead><tbody id="sppTable"></tbody></table>
       </div>
     </section>
+<section class="panel" id="studentImportPanel">
+  <div class="panel-heading">
+    <div>
+      <h2>Upload Data Siswa</h2>
+      <p class="muted">
+        Impor data siswa dari file Excel ke database Supabase.
+      </p>
+    </div>
+  </div>
 
+  <div class="field full">
+    <label for="studentExcelFile">Pilih file Excel (.xlsx)</label>
+    <input
+      id="studentExcelFile"
+      type="file"
+      accept=".xlsx,.xls"
+    >
+  </div>
+
+  <p class="muted">
+    Kolom wajib: Kode Siswa, Nama Siswa, dan Kelas.
+    Unit pendidikan akan mengikuti hak akses akun.
+  </p>
+
+  <button id="downloadStudentTemplate" class="btn btn-outline" type="button">
+    Unduh Template Excel
+  </button>
+
+  <button id="importStudentBtn" class="btn btn-primary" type="button">
+    Impor Data Siswa
+  </button>
+
+  <p id="studentImportMessage" class="form-message" role="status"></p>
+</section>
     <footer>
       <p><strong>Al Haromain Finance</strong> • Versi prototipe 0.1</p>
       <p>Belum untuk transaksi nyata. Versi produksi memerlukan login sungguhan, database terpusat, kontrol akses per unit, pencadangan, dan jejak audit.</p>
