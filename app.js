@@ -680,6 +680,188 @@ async function loadApp() {
       }
     });
   }
+  // ===== IMPORT DATA SISWA DARI EXCEL =====
+  function setupStudentImport() {
+    const fileInput = $("studentExcelFile");
+    const importBtn = $("importStudentBtn");
+    const templateBtn = $("downloadStudentTemplate");
+    const statusEl = $("studentImportMessage");
 
+    if (!fileInput || !importBtn || !templateBtn || !statusEl) return;
+
+    const showStatus = (text, error = false) => {
+      statusEl.textContent = text;
+      statusEl.style.color = error ? "#b42318" : "#137547";
+    };
+
+    templateBtn.onclick = () => {
+      if (!window.XLSX) {
+        showStatus("Pustaka Excel belum tersedia. Periksa index.html.", true);
+        return;
+      }
+
+      const rows = [
+        ["student_code", "full_name", "class_name", "enrolled_on"],
+        ["SD001", "Ahmad Contoh", "Kelas 1", "2026-07-15"],
+        ["SD002", "Aisyah Contoh", "Kelas 1", "2026-07-15"]
+      ];
+
+      const workbook = XLSX.utils.book_new();
+      const sheet = XLSX.utils.aoa_to_sheet(rows);
+      XLSX.utils.book_append_sheet(workbook, sheet, "Data Siswa");
+      XLSX.writeFile(workbook, "Template_Data_Siswa.xlsx");
+      showStatus("Template Excel berhasil dibuat.");
+    };
+
+    importBtn.onclick = async () => {
+      if (!window.XLSX) {
+        showStatus("Pustaka Excel belum tersedia. Periksa index.html.", true);
+        return;
+      }
+
+      if (!session?.user || !profile) {
+        showStatus("Silakan login terlebih dahulu.", true);
+        return;
+      }
+
+      if (profile.role !== "unit_treasurer" || !profile.unit_id) {
+        showStatus(
+          "Impor belum diizinkan untuk peran ini. Admin Yayasan memerlukan kebijakan akses khusus.",
+          true
+        );
+        return;
+      }
+
+      const file = fileInput.files?.[0];
+      if (!file) {
+        showStatus("Pilih file Excel terlebih dahulu.", true);
+        return;
+      }
+
+      if (!/\.(xlsx|xls)$/i.test(file.name)) {
+        showStatus("Format file harus .xlsx atau .xls.", true);
+        return;
+      }
+
+      importBtn.disabled = true;
+
+      try {
+        const buffer = await file.arrayBuffer();
+        const workbook = XLSX.read(buffer, { type: "array" });
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(sheet, {
+          defval: "",
+          raw: false
+        });
+
+        if (!rows.length) {
+          throw new Error("File Excel tidak berisi data.");
+        }
+
+        const normalize = value =>
+          String(value ?? "").trim().toLowerCase();
+
+        const prepared = [];
+        const errors = [];
+        const seenCodes = new Set();
+
+        rows.forEach((row, index) => {
+          const normalized = {};
+          Object.keys(row).forEach(key => {
+            normalized[normalize(key)] = row[key];
+          });
+
+          const code = String(
+            normalized.student_code ?? normalized.kode_siswa ?? ""
+          ).trim();
+
+          const name = String(
+            normalized.full_name ?? normalized.nama_siswa ?? ""
+          ).trim();
+
+          const className = String(
+            normalized.class_name ?? normalized.kelas ?? ""
+          ).trim();
+
+          const enrolledOn = String(
+            normalized.enrolled_on ?? normalized.tanggal_masuk ?? ""
+          ).trim();
+
+          if (!code || !name || !className) {
+            errors.push(`Baris ${index + 2}: kode, nama, dan kelas wajib diisi.`);
+            return;
+          }
+
+          if (seenCodes.has(code)) {
+            errors.push(`Baris ${index + 2}: kode siswa ${code} duplikat di file.`);
+            return;
+          }
+
+          seenCodes.add(code);
+
+          const student = {
+            unit_id: profile.unit_id,
+            student_code: code,
+            full_name: name,
+            class_name: className,
+            enrollment_status: "active"
+          };
+
+          if (enrolledOn) {
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(enrolledOn)) {
+              errors.push(
+                `Baris ${index + 2}: tanggal masuk harus berformat YYYY-MM-DD.`
+              );
+              return;
+            }
+            student.enrolled_on = enrolledOn;
+          }
+
+          prepared.push(student);
+        });
+
+        if (errors.length) {
+          showStatus(
+            `Impor dibatalkan. Perbaiki ${errors.length} masalah: ` +
+            errors.slice(0, 5).join(" "),
+            true
+          );
+          return;
+        }
+
+        if (!prepared.length) {
+          throw new Error("Tidak ada baris siswa yang valid.");
+        }
+
+        const confirmed = window.confirm(
+          `Impor ${prepared.length} siswa ke unit akun Anda? Data dengan kode yang sudah ada mungkin ditolak oleh database.`
+        );
+
+        if (!confirmed) {
+          showStatus("Impor dibatalkan.");
+          return;
+        }
+
+        const { data, error } = await sb
+          .from("students")
+          .insert(prepared)
+          .select("id");
+
+        if (error) {
+          throw new Error(error.message);
+        }
+
+        showStatus(
+          `Berhasil menyimpan ${data?.length ?? prepared.length} data siswa.`
+        );
+
+        fileInput.value = "";
+      } catch (error) {
+        showStatus("Impor gagal: " + error.message, true);
+      } finally {
+        importBtn.disabled = false;
+      }
+    };
+  }
   document.addEventListener("DOMContentLoaded", init);
 })();
