@@ -707,6 +707,7 @@ async function loadApp() {
     setupControls();
     setupStudentImport();
     await loadStudents();
+setupSPPFields();
     toggleApp(true);
 
     // Sembunyikan pemberitahuan demo lama.
