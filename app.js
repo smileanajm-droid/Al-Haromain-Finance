@@ -360,18 +360,26 @@
           }).join("")}</tbody>
         </table>`;
     }
-
+    
     if ($("transactionsTable")) {
       $("transactionsTable").innerHTML =
         `<thead><tr>
           <th>Tanggal</th><th>Unit</th><th>Jenis</th>
-          <th>Kategori</th><th>Keterangan</th>
-          <th>Nominal</th><th>Status</th>
+          <th>Kategori</th><th>Keterangan</th><th>Nominal</th>
+          <th>Status</th><th>Aksi</th>
         </tr></thead>
         <tbody>${transactions.map(t => {
           const unit = units.find(u => u.id === t.unit_id);
-          const jenis = t.direction === "in"
-            ? "Pemasukan" : "Pengeluaran";
+          const jenis = t.direction === "in" ? "Pemasukan" : "Pengeluaran";
+          const canApprove =
+            profile.role === "foundation_admin" &&
+            t.status === "pending" &&
+            t.requested_by !== session.user.id;
+
+          const actions = canApprove
+            ? `<button type="button" data-approve="${t.id}">Setujui</button>
+               <button type="button" data-reject="${t.id}">Tolak</button>`
+            : "—";
 
           return `<tr>
             <td>${escapeHTML(t.transaction_date)}</td>
@@ -381,15 +389,75 @@
             <td>${escapeHTML(t.description)}</td>
             <td>${rupiah(t.amount)}</td>
             <td>${escapeHTML(t.status)}</td>
+            <td>${actions}</td>
           </tr>`;
         }).join("")}</tbody>`;
+
+      $("transactionsTable").querySelectorAll("[data-approve]").forEach(btn => {
+        btn.addEventListener("click", () =>
+          decideTransaction(btn.dataset.approve, "approved")
+        );
+      });
+
+      $("transactionsTable").querySelectorAll("[data-reject]").forEach(btn => {
+        btn.addEventListener("click", () =>
+          decideTransaction(btn.dataset.reject, "rejected")
+        );
+      });
     }
+    
 
     if ($("emptyState")) {
       $("emptyState").style.display = transactions.length ? "none" : "block";
     }
   }
  
+  async function decideTransaction(id, status) {
+    if (profile?.role !== "foundation_admin") {
+      message("Hanya Pengurus Yayasan yang dapat memproses persetujuan.", true);
+      return;
+    }
+
+    if (!["approved", "rejected"].includes(status)) return;
+
+    const transaction = transactions.find(t => t.id === id);
+    if (!transaction || transaction.status !== "pending") {
+      message("Transaksi sudah diproses atau tidak ditemukan.", true);
+      return;
+    }
+
+    const action = status === "approved" ? "menyetujui" : "menolak";
+    if (!confirm(`Yakin ingin ${action} transaksi ini?`)) return;
+
+    const { data, error } = await sb
+      .from("transactions")
+      .update({
+        status,
+        approved_by: session.user.id,
+        approved_at: new Date().toISOString()
+      })
+      .eq("id", id)
+      .eq("status", "pending")
+      .select("id");
+
+    if (error) {
+      message("Gagal memproses persetujuan: " + error.message, true);
+      return;
+    }
+
+    if (!data || data.length === 0) {
+      message("Tidak ada perubahan. Periksa kebijakan akses Supabase.", true);
+      return;
+    }
+
+    message(status === "approved"
+      ? "Transaksi berhasil disetujui."
+      : "Transaksi berhasil ditolak."
+    );
+
+    await refreshTransactions();
+  }
+  
   async function submitTransaction(event) {
     event.preventDefault();
 
