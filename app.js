@@ -398,7 +398,14 @@ function setupSPPFields() {
 console.log("Profil unit:", profile.unit_id);
 console.log("Jumlah siswa cocok:", unitStudents.length, studentRecords);
   studentSelect.innerHTML = '<option value="">Pilih siswa</option>';
-
+if (unitStudents.length === 0) {
+  const option = document.createElement("option");
+  option.value = "";
+  option.textContent =
+    "Tidak ada siswa aktif untuk unit ini (" +
+    studentRecords.length + " data terbaca)";
+  studentSelect.appendChild(option);
+}
   unitStudents.forEach(student => {
     const option = document.createElement("option");
     option.value = student.id;
