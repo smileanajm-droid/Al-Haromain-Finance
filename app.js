@@ -841,10 +841,9 @@ setupSPPFields();
       }
 
       const rows = [
-        ["student_code", "full_name", "class_name", "enrolled_on"],
-        ["SD001", "Ahmad Contoh", "Kelas 1", "2026-07-15"],
-        ["SD002", "Aisyah Contoh", "Kelas 1", "2026-07-15"]
-      ];
+["student_code", "full_name", "class_name", "enrolled_on", "monthly_fee"],
+["SD001", "Ahmad Contoh", "Kelas 1", "2026-07-15", 100000],
+["SD002", "Aisyah Contoh", "Kelas 1", "2026-07-15", 50000]
 
       const workbook = XLSX.utils.book_new();
       const sheet = XLSX.utils.aoa_to_sheet(rows);
@@ -926,12 +925,30 @@ setupSPPFields();
           const enrolledOn = String(
             normalized.enrolled_on ?? normalized.tanggal_masuk ?? ""
           ).trim();
+          const monthlyFeeRaw =
+  normalized.monthly_fee ??
+  normalized.besaran_spp ??
+  normalized.spp ??
+  "";
+
+const monthlyFeeText = String(monthlyFeeRaw).trim();
+const monthlyFee = monthlyFeeText === ""
+  ? null
+  : Number(monthlyFeeText);
 
           if (!code || !name || !className) {
             errors.push(`Baris ${index + 2}: kode, nama, dan kelas wajib diisi.`);
             return;
           }
-
+if (
+  monthlyFee !== null &&
+  (!Number.isFinite(monthlyFee) || monthlyFee < 0)
+) {
+  errors.push(
+    `Baris ${index + 2}: nominal SPP harus berupa angka nol atau lebih.`
+  );
+  return;
+}
           if (seenCodes.has(code)) {
             errors.push(`Baris ${index + 2}: kode siswa ${code} duplikat di file.`);
             return;
@@ -940,12 +957,13 @@ setupSPPFields();
           seenCodes.add(code);
 
           const student = {
-            unit_id: profile.unit_id,
-            student_code: code,
-            full_name: name,
-            class_name: className,
-            enrollment_status: "active"
-          };
+  unit_id: profile.unit_id,
+  student_code: code,
+  full_name: name,
+  class_name: className,
+  monthly_fee: monthlyFee,
+  enrollment_status: "active"
+};
 
           if (enrolledOn) {
             if (!/^\d{4}-\d{2}-\d{2}$/.test(enrolledOn)) {
