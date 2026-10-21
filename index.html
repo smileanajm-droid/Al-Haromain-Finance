@@ -34,21 +34,7 @@
     </section>
 
     <section class="toolbar">
-      <div class="field">
-        <label for="roleFilter">Tampilan peran</label>
-        <select id="roleFilter">
-          <option value="foundation">Pengurus yayasan — semua unit</option>
-          <option value="treasurer">Bendahara unit — simulasi</option>
-        </select>
-      </div>
       
-    </section>
-
-    <section class="stats">
-      <article class="stat-card"><div class="stat-icon green">↙</div><div><p>Total pemasukan</p><strong id="incomeTotal">Rp0</strong><small>Periode terpilih</small></div></article>
-      <article class="stat-card"><div class="stat-icon red">↗</div><div><p>Total pengeluaran</p><strong id="expenseTotal">Rp0</strong><small>Periode terpilih</small></div></article>
-      <article class="stat-card"><div class="stat-icon blue">✓</div><div><p>Pembayaran SPP</p><strong id="sppTotal">Rp0</strong><small>Penerimaan SPP tercatat</small></div></article>
-      <article class="stat-card"><div class="stat-icon gold">!</div><div><p>Tunggakan contoh</p><strong id="arrearsTotal">Rp0</strong><small>Simulasi data tagihan</small></div></article>
     </section>
 
     <section class="content-grid">
@@ -80,7 +66,7 @@
             <div class="field"><label for="txAmount">Nominal (Rp)</label><input id="txAmount" type="number" min="1" step="1" placeholder="150000" required></div>
             <div class="field full"><label for="txNote">Keterangan</label><input id="txNote" type="text" maxlength="120" placeholder="Contoh: SPP Oktober — data simulasi" required></div>
           </div>
-          <button class="btn btn-primary" type="submit">Simpan transaksi demo</button>
+          <button class="btn btn-primary" type="submit">Simpan transaksi</button>
           <p id="formMessage" class="form-message" role="status"></p>
         </form>
       </article>
@@ -104,12 +90,6 @@
       <p id="emptyState" class="empty hidden">Belum ada transaksi untuk filter ini.</p>
     </section>
 
-    <section class="panel">
-      <div class="panel-heading"><div><h2>Contoh tagihan SPP</h2><p class="muted">Contoh data siswa anonim untuk menguji ringkasan tunggakan.</p></div></div>
-      <div class="table-wrap">
-        <table><thead><tr><th>Kode siswa</th><th>Unit</th><th>Periode</th><th>Tagihan</th><th>Dibayar</th><th>Status</th></tr></thead><tbody id="sppTable"></tbody></table>
-      </div>
-    </section>
 <section class="panel" id="studentImportPanel">
   <div class="panel-heading">
     <div>
@@ -182,8 +162,7 @@
   <p id="studentListMessage" class="form-message" role="status"></p>
     </section>
     <footer>
-      <p><strong>Al Haromain Finance</strong> • Versi prototipe 0.1</p>
-      <p>Belum untuk transaksi nyata. Versi produksi memerlukan login sungguhan, database terpusat, kontrol akses per unit, pencadangan, dan jejak audit.</p>
+    
     </footer>
   </main>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
