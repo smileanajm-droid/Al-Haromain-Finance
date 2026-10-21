@@ -408,6 +408,22 @@ function setupSPPFields() {
   });
 
   category.addEventListener("change", updateSPPFields);
+  studentSelect.addEventListener("change", () => {
+  const selectedStudent = studentRecords.find(
+    student => student.id === studentSelect.value
+  );
+
+  const amountInput = $("txAmount");
+
+  if (
+    selectedStudent &&
+    selectedStudent.monthly_fee !== null &&
+    selectedStudent.monthly_fee !== undefined &&
+    amountInput
+  ) {
+    amountInput.value = selectedStudent.monthly_fee;
+  }
+});
   updateSPPFields();
 }
   if ($("studentSearch")) {
