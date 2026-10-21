@@ -395,7 +395,8 @@ function setupSPPFields() {
     student.unit_id === profile.unit_id &&
     student.enrollment_status === "active"
   );
-
+console.log("Profil unit:", profile.unit_id);
+console.log("Jumlah siswa cocok:", unitStudents.length, studentRecords);
   studentSelect.innerHTML = '<option value="">Pilih siswa</option>';
 
   unitStudents.forEach(student => {
