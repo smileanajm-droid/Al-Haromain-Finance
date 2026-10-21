@@ -1,4 +1,4 @@
-const CACHE_NAME = "al-haromain-finance-v1";
+const CACHE_NAME = "al-haromain-finance-v2";
 const APP_SHELL = [
   "./",
   "./index.html",
