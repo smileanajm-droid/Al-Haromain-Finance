@@ -313,7 +313,7 @@
 
     const { data, error } = await sb
 .from("students")
-.select("id, unit_id, student_code, full_name, class_name, enrollment_status")
+.select("id, unit_id, student_code, full_name, class_name, enrollment_status, monthly_fee")
 .order("full_name", { ascending: true });
 
 if (!error) {
